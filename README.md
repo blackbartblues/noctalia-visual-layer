@@ -1,4 +1,3 @@
-```markdown
 <p align="center">
   <img src="preview.png" alt="Noctalia Visual Layer Banner" width="800">
 </p>
@@ -148,7 +147,3 @@ The system utilizes **Tabler Icons**. To add new icons, browse the catalog at [t
 * **Technical Assistance:** Co-programmed with AI (Gemini - Google)
 * **Inspiration:** HyDE Project & JaKooLit.
 * **Community:** Thanks to all Noctalia users.
-
-```
-
-```
