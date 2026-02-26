@@ -3,13 +3,22 @@
 # --- CONFIGURACIÓN DE RUTAS AUTOCONTENIDAS ---
 PLUGIN_DIR="$HOME/.config/noctalia/plugins/noctalia-visual-layer"
 FRAGMENTS_DIR="$PLUGIN_DIR/assets/fragments"
-FINAL_FILE="$PLUGIN_DIR/overlay.conf"
-TEMP_FILE="$PLUGIN_DIR/overlay.tmp"
-# [NUEVO] Ruta de los colores oficiales de Noctalia
+
+# [CAMBIO 1] Definimos la nueva ruta segura fuera del plugin
+NVL_SAFE_DIR="$HOME/.config/noctalia/NVL"
+
+# [CAMBIO 2] Apuntamos el archivo temporal y el final a la nueva ruta
+FINAL_FILE="$NVL_SAFE_DIR/overlay.conf"
+TEMP_FILE="$NVL_SAFE_DIR/overlay.tmp"
+
+# Ruta de los colores oficiales de Noctalia
 COLORS_FILE="$HOME/.config/hypr/noctalia/noctalia-colors.conf"
 
 # Aseguramos que la carpeta de fragmentos exista dentro del plugin
 mkdir -p "$FRAGMENTS_DIR"
+
+# [CAMBIO 3] Aseguramos que el refugio seguro exista antes de escribir en él
+mkdir -p "$NVL_SAFE_DIR"
 
 # 1. CREACIÓN DEL ARCHIVO TEMPORAL
 echo "# NOCTALIA VISUAL LAYER - OVERLAY MAESTRO" > "$TEMP_FILE"
