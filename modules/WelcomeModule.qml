@@ -10,28 +10,19 @@ import qs.Commons
 NScrollView {
     id: welcomeRoot
 
-    // CAMBIO: Renombrado a pluginApi
     property var pluginApi: null
-    property var runHypr: null
     property var runScript: null
+    property string pluginDir: ""
 
     Layout.fillWidth: true
     Layout.fillHeight: true
     contentHeight: mainLayout.implicitHeight + 100
     clip: true
 
-    // Función helper segura para traducir (si pluginApi es null, devuelve key)
-    function tr(key, defaultText) {
-        if (welcomeRoot.pluginApi && welcomeRoot.pluginApi.tr) {
-            return welcomeRoot.pluginApi.tr(key);
-        }
-        return defaultText || key;
-    }
-
-    // --- PERSISTENCIA ---
+    // --- PERSISTENCE ---
     LabSettings.Settings {
         id: welcomeSettings
-        fileName: Quickshell.env("HOME") + "/.config/noctalia/plugins/noctalia-visual-layer/assets/welcome.conf"
+        fileName: welcomeRoot.pluginDir + "/assets/welcome.conf"
         property bool isSystemActive: false
     }
 
@@ -41,7 +32,7 @@ NScrollView {
         spacing: Style.marginXL
         Layout.margins: Style.marginL
 
-        // --- CABECERA ---
+        // --- HEADER ---
         ColumnLayout {
             Layout.fillWidth: true
             Layout.topMargin: Style.marginXL
@@ -49,7 +40,7 @@ NScrollView {
             Layout.alignment: Qt.AlignHCenter
 
             Image {
-                source: "../assets/owl_neon.png"
+                source: welcomeRoot.pluginDir + "/assets/owl_neon.png"
                 fillMode: Image.PreserveAspectFit
                 Layout.preferredHeight: 400 * Style.uiScaleRatio
                 Layout.preferredWidth: 600 * Style.uiScaleRatio
@@ -60,14 +51,14 @@ NScrollView {
 
         NDivider { Layout.fillWidth: true }
 
-        // --- ACTIVACIÓN ---
+        // --- ACTIVATION ---
         ProCard {
-            title: tr("welcome.activation_title", "Activación del Sistema")
+            title: welcomeRoot.pluginApi?.tr("welcome.activation_title") || "System Activation"
             iconName: "power"
             accentColor: welcomeSettings.isSystemActive ? Color.mPrimary : "#ef4444"
             description: welcomeSettings.isSystemActive
-            ? tr("welcome.system_active", "Sistema operativo.")
-            : tr("welcome.system_inactive", "Sistema detenido.")
+            ? (welcomeRoot.pluginApi?.tr("welcome.system_active") || "The system is operational. Visual effects are safely managed by NVL.")
+            : (welcomeRoot.pluginApi?.tr("welcome.system_inactive") || "System halted. Requires acceptance of the persistence contract to continue.")
 
             extraContent: ColumnLayout {
                 spacing: Style.marginM
@@ -75,9 +66,9 @@ NScrollView {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 15
+                    Layout.margins: Style.marginL
                     NText {
-                        text: tr("welcome.enable_label", "Habilitar Visual Layer")
+                        text: welcomeRoot.pluginApi?.tr("welcome.enable_label") || "Enable Visual Layer"
                         font.weight: Font.Bold
                         pointSize: Style.fontSizeL
                         color: Color.mOnSurface
@@ -104,17 +95,16 @@ NScrollView {
                     border.width: 1
                     RowLayout {
                         id: warnCol
-                        anchors.fill: parent; anchors.margins: 12; spacing: 12
+                        anchors.fill: parent; anchors.margins: Style.marginL; spacing: Style.marginL
                         NIcon { icon: "alert-circle"; color: "#ef4444"; pointSize: 20; Layout.alignment: Qt.AlignTop }
                         ColumnLayout {
-                            Layout.fillWidth: true; spacing: 4
+                            Layout.fillWidth: true; spacing: Style.marginXS
                             NText {
-                                text: tr("welcome.warning.title", "CONTRATO DE PERSISTENCIA")
+                                text: welcomeRoot.pluginApi?.tr("welcome.warning.title") || "SECURE PERSISTENCE CONTRACT"
                                 font.weight: Font.Bold; color: "#ef4444"; pointSize: Style.fontSizeS
                             }
                             NText {
-                                // CAMBIO: Texto actualizado para reflejar la nueva seguridad
-                                text: tr("welcome.warning.text", "Se creará un escudo guardián y se añadirá una línea segura a <b>hyprland.conf</b>. Si desinstalas el plugin, el sistema se limpiará automáticamente en el siguiente reinicio sin generar errores.")
+                                text: welcomeRoot.pluginApi?.tr("welcome.warning.text") || "Upon activation, NVL will deploy a <b>guardian shield</b> and inject a secure path into your <code>hyprland.conf</code>. If you uninstall the plugin from the Shell, the system will self-clean on the next reboot without causing Hyprland errors."
                                 color: Color.mOnSurfaceVariant; wrapMode: Text.WordWrap; textFormat: Text.RichText; Layout.fillWidth: true; pointSize: Style.fontSizeS
                             }
                         }
@@ -123,86 +113,86 @@ NScrollView {
             }
         }
 
-        // --- CARACTERÍSTICAS ---
+        // --- FEATURES ---
         ProCard {
-            title: tr("welcome.features.title", "Características")
+            title: welcomeRoot.pluginApi?.tr("welcome.features.title") || "Features & Benefits"
             iconName: "star"; accentColor: "#fbbf24"
-            description: tr("welcome.features.description", "La evolución estética.")
+            description: welcomeRoot.pluginApi?.tr("welcome.features.description") || "Noctalia Visual Layer is the aesthetic evolution of your desktop."
             extraContent: ColumnLayout {
-                spacing: 6
+                spacing: Style.marginS
                 Repeater {
-                    // Usamos las claves del JSON para la lista
                     model: [
-                        tr("welcome.features.list.fluid_anim", "Animaciones"),
-                        tr("welcome.features.list.smart_borders", "Bordes"),
-                        tr("welcome.features.list.realtime_shaders", "Shaders"),
-                        tr("welcome.features.list.non_destructive", "No Destructivo")
+                        welcomeRoot.pluginApi?.tr("welcome.features.list.fluid_anim") || "✨ <b>Fluid Animations</b>",
+                        welcomeRoot.pluginApi?.tr("welcome.features.list.smart_borders") || "🎨 <b>Smart Borders</b>",
+                        welcomeRoot.pluginApi?.tr("welcome.features.list.realtime_shaders") || "🕶️ <b>Real-Time Shaders</b>",
+                        welcomeRoot.pluginApi?.tr("welcome.features.list.non_destructive") || "🛡️ <b>Non-Destructive</b>"
                     ]
                     delegate: RowLayout {
-                        spacing: 8
+                        spacing: Style.marginM
                         NIcon { icon: "check"; color: Color.mPrimary; pointSize: 12 }
                         NText { text: modelData; color: Color.mOnSurfaceVariant; pointSize: 10; textFormat: Text.RichText }
                     }
                 }
             }
         }
-        // --- DOCUMENTACIÓN TÉCNICA ---
+
+        // --- TECHNICAL DOCUMENTATION ---
         ProCard {
-            title: tr("welcome.docs.title", "Arquitectura y Documentación")
+            title: welcomeRoot.pluginApi?.tr("welcome.docs.title") || "Architecture & Documentation"
             iconName: "book"; accentColor: "#38bdf8"
-            description: tr("welcome.docs.description", "Descubre cómo funciona NVL por debajo.")
+            description: welcomeRoot.pluginApi?.tr("welcome.docs.description") || "Discover how NVL works under the hood."
 
             extraContent: ColumnLayout {
-                spacing: 15
+                spacing: Style.marginL
 
-                // Resumen Técnico Elegante
+                // Technical summary
                 NText {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
                     color: "#a9b1d6"
                     font.pointSize: 10
                     textFormat: Text.RichText
-                    text: tr("welcome.docs.summary", "<b>Noctalia Visual Layer</b> utiliza un sistema de <i>Fragmentos y Ensamblaje</i> en tiempo real. Nunca toca tu configuración principal. Todo se genera de forma segura en un archivo maestro <code>overlay.conf</code> aislado.")
+                    text: welcomeRoot.pluginApi?.tr("welcome.docs.summary") || "<b>Noctalia Visual Layer</b> uses a real-time <i>Fragments and Assembly</i> system. It never touches your main configuration. Everything is safely generated in an isolated <code>overlay.conf</code> master file."
                 }
 
-                // Fila de Botones de Acción
+                // Action buttons row
                 RowLayout {
-                    spacing: 10
+                    spacing: Style.marginM
                     Layout.fillWidth: true
 
                     NButton {
-                        text: tr("welcome.docs.btn_readme", "Leer Manual Completo")
+                        text: welcomeRoot.pluginApi?.tr("welcome.docs.btn_readme") || "Read Full Manual"
                         icon: "external-link"
                         Layout.fillWidth: true
                         onClicked: {
-                            // Abre el LEEME.md (o README.md) con la aplicación por defecto del sistema
-                            Qt.openUrlExternally("file://" + Quickshell.env("HOME") + "/.config/noctalia/plugins/noctalia-visual-layer/LEEME.md")
+                            // Open README with the system default application
+                            Qt.openUrlExternally("file://" + welcomeRoot.pluginDir + "/LEEME.md")
                         }
                     }
 
                     NButton {
-                        text: tr("welcome.docs.btn_folder", "Explorar Archivos")
+                        text: welcomeRoot.pluginApi?.tr("welcome.docs.btn_folder") || "Browse Files"
                         icon: "folder"
                         Layout.fillWidth: true
                         onClicked: {
-                            // Abre el gestor de archivos directamente en la carpeta del plugin
-                            Qt.openUrlExternally("file://" + Quickshell.env("HOME") + "/.config/noctalia/plugins/noctalia-visual-layer/")
+                            // Open file manager at the plugin folder
+                            Qt.openUrlExternally("file://" + welcomeRoot.pluginDir + "/")
                         }
                     }
                 }
             }
         }
 
-        // --- CRÉDITOS ---
+        // --- CREDITS ---
         ProCard {
-            title: tr("welcome.credits.title", "Créditos")
+            title: welcomeRoot.pluginApi?.tr("welcome.credits.title") || "Credits"
             iconName: "heart"; accentColor: "#f472b6"
-            description: tr("welcome.credits.description", "Gracias a HyDE.")
+            description: welcomeRoot.pluginApi?.tr("welcome.credits.description") || "Special thanks to the <b>HyDE Project</b>."
 
             extraContent: ColumnLayout {
                 spacing: Style.marginM
                 NButton {
-                    text: tr("welcome.credits.btn_hyde", "Inspirado en HyDE")
+                    text: welcomeRoot.pluginApi?.tr("welcome.credits.btn_hyde") || "Inspired by HyDE Project"
                     icon: "brand-github"; Layout.fillWidth: true
                     onClicked: Qt.openUrlExternally("https://github.com/HyDE-Project/")
                 }
@@ -211,10 +201,10 @@ NScrollView {
                     spacing: Style.marginM
                     NIcon { icon: "code"; color: Color.mOnSurfaceVariant; pointSize: Style.fontSizeL }
                     ColumnLayout {
-                        spacing: 2
-                        NText { text: tr("welcome.credits.ai_title", "IA"); font.weight: Font.Bold }
+                        spacing: Style.marginXXS
+                        NText { text: welcomeRoot.pluginApi?.tr("welcome.credits.ai_title") || "AI Co-Programmed"; font.weight: Font.Bold }
                         NText {
-                            text: tr("welcome.credits.ai_desc", "Gracias a Gemini.");
+                            text: welcomeRoot.pluginApi?.tr("welcome.credits.ai_desc") || "QML Architecture assistance by Gemini (Google)."
                             color: Color.mOnSurfaceVariant; wrapMode: Text.Wrap; Layout.fillWidth: true; pointSize: Style.fontSizeS
                         }
                     }
@@ -224,7 +214,7 @@ NScrollView {
         Item { Layout.preferredHeight: 50 }
     }
 
-    // --- COMPONENTES AUXILIARES ---
+    // --- HELPER COMPONENTS ---
     component ProCard : NBox {
         id: cardRoot
         property string title; property string iconName; property string description

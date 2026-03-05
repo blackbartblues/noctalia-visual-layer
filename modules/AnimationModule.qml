@@ -11,36 +11,25 @@ NScrollView {
     id: animRoot
 
     property var pluginApi: null
-    property var runHypr: null
     property var runScript: null
+    property string pluginDir: ""
 
     Layout.fillWidth: true
     Layout.fillHeight: true
     contentHeight: mainLayout.implicitHeight + 50
     clip: true
 
-    // --- LÓGICA DE TRADUCCIÓN HÍBRIDA (ANTI-EXCLAMACIONES) ---
-    function tr(key, fallback) {
-        if (pluginApi && pluginApi.tr) {
-            var t = pluginApi.tr(key);
-            if (t !== key && t !== "" && t.indexOf("!!") === -1) {
-                return t;
-            }
-        }
-        return fallback || key;
-    }
-
-    // --- PERSISTENCIA ---
+    // --- PERSISTENCE ---
     LabSettings.Settings {
         id: animSettings
-        fileName: Quickshell.env("HOME") + "/.config/noctalia/plugins/noctalia-visual-layer/assets/animations/store.conf"
+        fileName: animRoot.pluginDir + "/assets/animations/store.conf"
         property string activeAnimFile: ""
     }
 
-    // --- ESCÁNER ---
+    // --- SCANNER ---
     Process {
         id: scanner
-        command: ["bash", Quickshell.env("HOME") + "/.config/noctalia/plugins/noctalia-visual-layer/assets/scripts/scan.sh", "animations"]
+        command: ["bash", animRoot.pluginDir + "/assets/scripts/scan.sh", "animations"]
         property string outputData: ""
         stdout: SplitParser { onRead: function(data) { scanner.outputData += data; } }
         onExited: (code) => {
@@ -49,13 +38,17 @@ NScrollView {
                     var data = JSON.parse(scanner.outputData);
                     animModel.clear();
                     for (var i = 0; i < data.length; i++) { animModel.append(data[i]); }
-                } catch (e) { console.error("JSON Error: " + e); }
+                } catch (e) { Logger.e("NVL", "JSON parse error: " + e); }
             }
         }
     }
-    Component.onCompleted: scanner.running = true
+    onPluginDirChanged: if (pluginDir !== "") { scanner.outputData = ""; scanner.running = true }
+    Component.onCompleted: if (pluginDir !== "") scanner.running = true
+    Component.onDestruction: {
+        if (scanner.running) scanner.terminate()
+    }
 
-    // --- DELEGADO ---
+    // --- DELEGATE ---
     Component {
         id: animDelegate
         NBox {
@@ -64,7 +57,7 @@ NScrollView {
             Layout.preferredHeight: 85 * Style.uiScaleRatio
             radius: Style.radiusM
 
-            // 1. MAPEO DE PROPIEDADES
+            // Property mapping
             property string cTitleKey: model.title || ""
             property string cDescKey: model.desc || ""
             property string cRawTitle: model.rawTitle || ""
@@ -87,18 +80,18 @@ NScrollView {
             MouseArea {
                 id: hoverArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    // 1. CAPTURAR EL ESTADO ACTUAL
+                    // 1. Capture current state
                     var wasActive = isActive
 
-                    // 2. CALCULAR LA INTENCIÓN
+                    // 2. Determine intent
                     var scriptArg = wasActive ? "none" : cardRoot.cFile
                     var settingArg = wasActive ? "" : cardRoot.cFile
 
-                    // 3. EJECUTAR EL SCRIPT PRIMERO
+                    // 3. Run script first
                     if (animRoot.runScript) animRoot.runScript("apply_animation.sh", scriptArg)
 
-                        // 4. ACTUALIZAR LA UI AL FINAL
-                        animSettings.activeAnimFile = settingArg
+                    // 4. Update UI last
+                    animSettings.activeAnimFile = settingArg
                 }
             }
             RowLayout {
@@ -109,12 +102,11 @@ NScrollView {
                     pointSize: Style.fontSizeL
                 }
                 ColumnLayout {
-                    Layout.fillWidth: true; spacing: 2
+                    Layout.fillWidth: true; spacing: Style.marginXXS
                     RowLayout {
-                        spacing: 8
-                        // 2. USO DE TRADUCCIÓN SEGURA
+                        spacing: Style.marginM
                         NText {
-                            text: animRoot.tr(cardRoot.cTitleKey, cardRoot.cRawTitle)
+                            text: (cardRoot.cTitleKey ? animRoot.pluginApi?.tr(cardRoot.cTitleKey) : null) || cardRoot.cRawTitle
                             font.weight: Font.Bold
                             color: cardRoot.isActive ? Color.mOnSurface : Color.mOnSurfaceVariant
                         }
@@ -124,11 +116,11 @@ NScrollView {
                         }
                     }
                     NText {
-                        text: animRoot.tr(cardRoot.cDescKey, cardRoot.cRawDesc)
+                        text: (cardRoot.cDescKey ? animRoot.pluginApi?.tr(cardRoot.cDescKey) : null) || cardRoot.cRawDesc
                         pointSize: Style.fontSizeS; color: Color.mOnSurfaceVariant; elide: Text.ElideRight; Layout.fillWidth: true
                     }
                 }
-                // Switch visual para consistencia
+                // Visual toggle switch
                 VisualSwitch {
                     checked: cardRoot.isActive
                     onToggled: hoverArea.clicked(null)
@@ -146,14 +138,13 @@ NScrollView {
         Layout.margins: Style.marginM
 
         ColumnLayout {
-            Layout.fillWidth: true; spacing: 4; Layout.margins: Style.marginL
-            // CABECERAS TRADUCIBLES
+            Layout.fillWidth: true; spacing: Style.marginXS; Layout.margins: Style.marginL
             NText {
-                text: animRoot.tr("animations.header_title", "Biblioteca de Movimiento")
+                text: animRoot.pluginApi?.tr("animations.header_title") || "Motion Library"
                 font.weight: Font.Bold; pointSize: Style.fontSizeL; color: Color.mPrimary
             }
             NText {
-                text: animRoot.tr("animations.header_subtitle", "Selecciona el estilo de animación")
+                text: animRoot.pluginApi?.tr("animations.header_subtitle") || "Select the animation style for your desktop"
                 pointSize: Style.fontSizeS; color: Color.mOnSurfaceVariant
             }
         }

@@ -12,61 +12,36 @@ NIconButton {
   property string widgetId: ""
   property string section: ""
 
-  // --- LÓGICA ESTÁNDAR DE CONFIGURACIÓN (1:1 Hello World) ---
+  // --- STANDARD SETTINGS LOGIC ---
   property var cfg: pluginApi?.pluginSettings || ({})
   property var defaults: pluginApi?.manifest?.metadata?.defaultSettings || ({})
 
-  // Aquí definimos el color. Si no hay config, usa "primary" por defecto.
+  // Icon color from config, fallback to "onSurface"
   readonly property string iconColorKey: cfg.iconColor ?? defaults.iconColor ?? "onSurface"
 
-  // --- DATOS PROPIOS DEL PLUGIN ---
+  // --- PLUGIN DATA ---
   icon: "adjustments-horizontal"
-  tooltipText: pluginApi?.tr("widget.tooltip") || "Noctalia Visual Layer"
+  tooltipText: pluginApi?.tr("widget.tooltip") || "Hyprland Visual Layer"
 
-  // --- ESTILOS DEL SISTEMA (1:1 Hello World) ---
-  // Usamos las variables globales para máxima compatibilidad
+  // --- SYSTEM STYLES ---
   tooltipDirection: BarService.getTooltipDirection(screen?.name)
   baseSize: Style.getCapsuleHeightForScreen(screen?.name)
   applyUiScale: false
 
-  customRadius: Style.radiusL // El estándar usa Radius L
+  customRadius: Style.radiusL
 
-  // Colores del sistema (Cápsula sólida)
+  // Capsule colors
   colorBg: Style.capsuleColor
   colorFg: Color.resolveColorKey(iconColorKey)
 
   border.color: Style.capsuleBorderColor
   border.width: Style.capsuleBorderWidth
 
-  // --- INTERACCIÓN ---
+  // --- INTERACTION ---
   onClicked: {
     if (pluginApi) {
-      pluginApi.openPanel(root.screen, this);
+      pluginApi.togglePanel(root.screen);
     }
   }
 
-  // --- MENÚ CONTEXTUAL ESTÁNDAR ---
-  NPopupContextMenu {
-    id: contextMenu
-
-    model: [
-      {
-        "label": pluginApi?.tr("menu.settings") || "Ajustes",
-        "action": "settings",
-        "icon": "settings"
-      },
-    ]
-
-    onTriggered: function (action) {
-      contextMenu.close();
-      PanelService.closeContextMenu(screen);
-      if (action === "settings") {
-        BarService.openPluginSettings(root.screen, pluginApi.manifest);
-      }
-    }
-  }
-
-  onRightClicked: {
-    PanelService.showContextMenu(contextMenu, root, screen);
-  }
 }

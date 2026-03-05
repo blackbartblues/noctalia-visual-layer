@@ -11,37 +11,25 @@ NScrollView {
     id: shaderRoot
 
     property var pluginApi: null
-    property var runHypr: null
     property var runScript: null
+    property string pluginDir: ""
 
     Layout.fillWidth: true
     Layout.fillHeight: true
     contentHeight: mainLayout.implicitHeight + 50
     clip: true
 
-    // --- LÓGICA DE TRADUCCIÓN HÍBRIDA (ANTI-EXCLAMACIONES) ---
-    function tr(key, fallback) {
-        if (pluginApi && pluginApi.tr) {
-            var t = pluginApi.tr(key);
-            // Si es distinto a la clave Y no contiene exclamaciones de error
-            if (t !== key && t !== "" && t.indexOf("!!") === -1) {
-                return t;
-            }
-        }
-        return fallback || key;
-    }
-
-    // --- PERSISTENCIA ---
+    // --- PERSISTENCE ---
     LabSettings.Settings {
         id: shaderSettings
-        fileName: Quickshell.env("HOME") + "/.config/noctalia/plugins/noctalia-visual-layer/assets/shaders/store.conf"
+        fileName: shaderRoot.pluginDir + "/assets/shaders/store.conf"
         property string activeShaderFile: ""
     }
 
-    // --- ESCÁNER ---
+    // --- SCANNER ---
     Process {
         id: scanner
-        command: ["bash", Quickshell.env("HOME") + "/.config/noctalia/plugins/noctalia-visual-layer/assets/scripts/scan.sh", "shaders"]
+        command: ["bash", shaderRoot.pluginDir + "/assets/scripts/scan.sh", "shaders"]
         property string outputData: ""
         stdout: SplitParser { onRead: function(data) { scanner.outputData += data; } }
         onExited: (code) => {
@@ -50,13 +38,17 @@ NScrollView {
                     var data = JSON.parse(scanner.outputData);
                     shaderModel.clear();
                     for (var i = 0; i < data.length; i++) { shaderModel.append(data[i]); }
-                } catch (e) { console.error("JSON Error: " + e); }
+                } catch (e) { Logger.e("NVL", "JSON parse error: " + e); }
             }
         }
     }
-    Component.onCompleted: scanner.running = true
+    onPluginDirChanged: if (pluginDir !== "") { scanner.outputData = ""; scanner.running = true }
+    Component.onCompleted: if (pluginDir !== "") scanner.running = true
+    Component.onDestruction: {
+        if (scanner.running) scanner.terminate()
+    }
 
-    // --- DELEGADO ---
+    // --- DELEGATE ---
     Component {
         id: shaderDelegate
         NBox {
@@ -65,7 +57,7 @@ NScrollView {
             Layout.preferredHeight: 85 * Style.uiScaleRatio
             radius: Style.radiusM
 
-            // 1. MAPEO DE PROPIEDADES (Raw + Key)
+            // Property mapping (Raw + Key)
             property string cTitleKey: model.title || ""
             property string cDescKey: model.desc || ""
             property string cRawTitle: model.rawTitle || ""
@@ -88,18 +80,18 @@ NScrollView {
             MouseArea {
                 id: hoverArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    // 1. CAPTURAR EL ESTADO ACTUAL
+                    // 1. Capture current state
                     var wasActive = isActive
 
-                    // 2. CALCULAR LA INTENCIÓN
+                    // 2. Determine intent
                     var scriptArg = wasActive ? "none" : cardRoot.cFile
                     var settingArg = wasActive ? "" : cardRoot.cFile
 
-                    // 3. EJECUTAR EL SCRIPT PRIMERO
+                    // 3. Run script first
                     if (shaderRoot.runScript) shaderRoot.runScript("shader.sh", scriptArg)
 
-                        // 4. ACTUALIZAR LA UI AL FINAL
-                        shaderSettings.activeShaderFile = settingArg
+                    // 4. Update UI last
+                    shaderSettings.activeShaderFile = settingArg
                 }
             }
 
@@ -111,12 +103,11 @@ NScrollView {
                     pointSize: Style.fontSizeL
                 }
                 ColumnLayout {
-                    Layout.fillWidth: true; spacing: 2
+                    Layout.fillWidth: true; spacing: Style.marginXXS
                     RowLayout {
-                        spacing: 8
-                        // 2. USO DE TRADUCCIÓN SEGURA
+                        spacing: Style.marginM
                         NText {
-                            text: shaderRoot.tr(cardRoot.cTitleKey, cardRoot.cRawTitle)
+                            text: (cardRoot.cTitleKey ? shaderRoot.pluginApi?.tr(cardRoot.cTitleKey) : null) || cardRoot.cRawTitle
                             font.weight: Font.Bold
                             color: cardRoot.isActive ? Color.mOnSurface : Color.mOnSurfaceVariant
                         }
@@ -126,7 +117,7 @@ NScrollView {
                         }
                     }
                     NText {
-                        text: shaderRoot.tr(cardRoot.cDescKey, cardRoot.cRawDesc)
+                        text: (cardRoot.cDescKey ? shaderRoot.pluginApi?.tr(cardRoot.cDescKey) : null) || cardRoot.cRawDesc
                         pointSize: Style.fontSizeS; color: Color.mOnSurfaceVariant; elide: Text.ElideRight; Layout.fillWidth: true
                     }
                 }
@@ -147,14 +138,13 @@ NScrollView {
         Layout.margins: Style.marginM
 
         ColumnLayout {
-            Layout.fillWidth: true; spacing: 4; Layout.margins: Style.marginL
-            // CABECERAS TRADUCIBLES
+            Layout.fillWidth: true; spacing: Style.marginXS; Layout.margins: Style.marginL
             NText {
-                text: shaderRoot.tr("shaders.header_title", "Filtros Visuales")
+                text: shaderRoot.pluginApi?.tr("shaders.header_title") || "Screen Filters"
                 font.weight: Font.Bold; pointSize: Style.fontSizeL; color: Color.mPrimary
             }
             NText {
-                text: shaderRoot.tr("shaders.header_subtitle", "Post-procesado de imagen")
+                text: shaderRoot.pluginApi?.tr("shaders.header_subtitle") || "Real-time image post-processing"
                 pointSize: Style.fontSizeS; color: Color.mOnSurfaceVariant
             }
         }

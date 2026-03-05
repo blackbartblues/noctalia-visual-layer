@@ -11,23 +11,25 @@ import "./modules"
 Item {
     id: root
 
-    // IMPORTANTE: Aseguramos el nombre estándar
     property var pluginApi: null
-    property var runHypr: null
     readonly property int barHeight: 20
 
-    // --- MOTOR DE SCRIPTS ---
+    readonly property string pluginDir: Settings.configDir + "plugins/noctalia-visual-layer"
+
+    // --- SCRIPT ENGINE ---
     Process {
         id: bashProcess
-        onStdoutChanged: console.log("[SCRIPT LOG]: " + stdout)
-        onStderrChanged: console.log("[SCRIPT ERROR]: " + stderr)
+        onStdoutChanged: Logger.i("NVL", stdout)
+        onStderrChanged: Logger.e("NVL", stderr)
     }
 
     function runScript(scriptName, args) {
-        var scriptPath = Quickshell.env("HOME") + "/.config/noctalia/plugins/noctalia-visual-layer/assets/scripts/" + scriptName
-        console.log("Ejecutando: " + scriptPath + " " + args)
-        bashProcess.command = ["bash", scriptPath, args]
+        bashProcess.command = ["bash", pluginDir + "/assets/scripts/" + scriptName, args]
         bashProcess.running = true
+    }
+
+    Component.onDestruction: {
+        if (bashProcess.running) bashProcess.terminate()
     }
 
     property real contentPreferredWidth: 700 * Style.uiScaleRatio
@@ -45,7 +47,7 @@ Item {
             anchors.margins: Style.marginL
             spacing: Style.marginM
 
-            // 1. CABECERA CENTRADA
+            // 1. CENTERED HEADER
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Style.marginS
@@ -63,15 +65,13 @@ Item {
                     spacing: 0
                     Layout.alignment: Qt.AlignCenter
                     NText {
-                        // TRADUCCIÓN: Título principal
-                        text: root.pluginApi ? root.pluginApi.tr("panel.header_title") : "Noctalia Visual"
+                        text: pluginApi?.tr("panel.header_title") || "Hyprland Visual"
                         pointSize: Style.fontSizeXL
                         font.weight: Font.Bold
                         color: Color.mPrimary
                     }
                     NText {
-                        // TRADUCCIÓN: Subtítulo
-                        text: root.pluginApi ? root.pluginApi.tr("panel.header_subtitle") : "Centro de Control Estético"
+                        text: pluginApi?.tr("panel.header_subtitle") || "Aesthetic Control Center"
                         pointSize: Style.fontSizeS
                         color: Color.mOnSurfaceVariant
                     }
@@ -80,35 +80,34 @@ Item {
                 Item { Layout.fillWidth: true }
             }
 
-            // 2. BARRA DE NAVEGACIÓN
+            // 2. NAVIGATION BAR
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: Style.marginM
 
-                // TRADUCCIÓN: Pestañas usando las keys del JSON (panel.tabs.xxxx)
                 TabItem {
-                    label: root.pluginApi ? root.pluginApi.tr("panel.tabs.home") : "Inicio"
+                    label: pluginApi?.tr("panel.tabs.home") || "Home"
                     iconName: "home"
                     index: 0
                     accentColor: "#38bdf8"
                     isSelected: stackLayout.currentIndex === 0
                 }
                 TabItem {
-                    label: root.pluginApi ? root.pluginApi.tr("panel.tabs.animations") : "Animaciones"
+                    label: pluginApi?.tr("panel.tabs.animations") || "Animations"
                     iconName: "movie"
                     index: 1
                     accentColor: "#fbbf24"
                     isSelected: stackLayout.currentIndex === 1
                 }
                 TabItem {
-                    label: root.pluginApi ? root.pluginApi.tr("panel.tabs.borders") : "Bordes"
+                    label: pluginApi?.tr("panel.tabs.borders") || "Borders"
                     iconName: "border-all"
                     index: 2
                     accentColor: "#10b981"
                     isSelected: stackLayout.currentIndex === 2
                 }
                 TabItem {
-                    label: root.pluginApi ? root.pluginApi.tr("panel.tabs.effects") : "Efectos"
+                    label: pluginApi?.tr("panel.tabs.effects") || "Effects"
                     iconName: "wand"
                     index: 3
                     accentColor: "#c084fc"
@@ -116,7 +115,7 @@ Item {
                 }
             }
 
-            // 3. ÁREA DE CONTENIDO
+            // 3. CONTENT AREA
             NBox {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -130,11 +129,11 @@ Item {
                     anchors.margins: Style.marginS
                     currentIndex: 0
 
-                    // Pasamos pluginApi correctamente a los hijos
-                    WelcomeModule   { pluginApi: root.pluginApi; runScript: root.runScript }
-                    AnimationModule { pluginApi: root.pluginApi; runScript: root.runScript }
-                    BorderModule    { pluginApi: root.pluginApi; runScript: root.runScript }
-                    ShaderModule    { pluginApi: root.pluginApi; runScript: root.runScript }
+                    // Pass pluginApi and pluginDir to child modules
+                    WelcomeModule   { pluginApi: root.pluginApi; pluginDir: root.pluginDir; runScript: root.runScript }
+                    AnimationModule { pluginApi: root.pluginApi; pluginDir: root.pluginDir; runScript: root.runScript }
+                    BorderModule    { pluginApi: root.pluginApi; pluginDir: root.pluginDir; runScript: root.runScript }
+                    ShaderModule    { pluginApi: root.pluginApi; pluginDir: root.pluginDir; runScript: root.runScript }
                 }
             }
         }
@@ -176,7 +175,7 @@ Item {
 
         RowLayout {
             anchors.centerIn: parent
-            spacing: 8
+            spacing: Style.marginM
 
             NIcon {
                 icon: iconName

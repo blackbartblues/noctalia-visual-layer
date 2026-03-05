@@ -5,8 +5,7 @@
     "author": "Ximo & AI"
   },
   "widget": {
-    "tooltip": "Noctalia Visual Layer",
-    "menu_settings": "Plugin-Einstellungen"
+    "tooltip": "Noctalia Visual Layer"
   },
   "panel": {
     "header_title": "Noctalia Visual",

@@ -11,46 +11,31 @@ NScrollView {
     id: borderRoot
 
     property var pluginApi: null
-    property var runHypr: null
     property var runScript: null
+    property string pluginDir: ""
 
     Layout.fillWidth: true
     Layout.fillHeight: true
     contentHeight: mainLayout.implicitHeight + 50
     clip: true
 
-    // --- LÓGICA DE TRADUCCIÓN HÍBRIDA (ANTI-EXCLAMACIONES) ---
-    function tr(key, fallback) {
-        if (pluginApi && pluginApi.tr) {
-            var translated = pluginApi.tr(key);
-
-            // Verificamos DOS cosas:
-            // 1. Que no sea igual a la clave
-            // 2. Que NO contenga "!!" (que es como Noctalia marca los errores)
-            if (translated !== key && translated.indexOf("!!") === -1) {
-                return translated;
-            }
-        }
-        // Si falla la traducción o devuelve error (!!), usamos el texto original del archivo
-        return fallback || key;
-    }
-    // --- PERSISTENCIA ---
+    // --- PERSISTENCE ---
     LabSettings.Settings {
         id: borderSettings
-        fileName: Quickshell.env("HOME") + "/.config/noctalia/plugins/noctalia-visual-layer/assets/borders/store.conf"
+        fileName: borderRoot.pluginDir + "/assets/borders/store.conf"
         property string activeBorderFile: ""
     }
     LabSettings.Settings {
         id: geomSettings
         category: "VisualLayer_Geometry"
-        fileName: Quickshell.env("HOME") + "/.config/noctalia/plugins/noctalia-visual-layer/assets/borders/store.conf"
+        fileName: borderRoot.pluginDir + "/assets/borders/store.conf"
         property int borderSize: 2
     }
 
-    // --- ESCÁNER ---
+    // --- SCANNER ---
     Process {
         id: scanner
-        command: ["bash", Quickshell.env("HOME") + "/.config/noctalia/plugins/noctalia-visual-layer/assets/scripts/scan.sh", "borders"]
+        command: ["bash", borderRoot.pluginDir + "/assets/scripts/scan.sh", "borders"]
         property string outputData: ""
         stdout: SplitParser { onRead: function(data) { scanner.outputData += data; } }
         onExited: (code) => {
@@ -59,13 +44,17 @@ NScrollView {
                     var data = JSON.parse(scanner.outputData);
                     borderModel.clear();
                     for (var i = 0; i < data.length; i++) { borderModel.append(data[i]); }
-                } catch (e) { console.error("JSON Error: " + e); }
+                } catch (e) { Logger.e("NVL", "JSON parse error: " + e); }
             }
         }
     }
-    Component.onCompleted: scanner.running = true
+    onPluginDirChanged: if (pluginDir !== "") { scanner.outputData = ""; scanner.running = true }
+    Component.onCompleted: if (pluginDir !== "") scanner.running = true
+    Component.onDestruction: {
+        if (scanner.running) scanner.terminate()
+    }
 
-    // --- DELEGADO ---
+    // --- DELEGATE ---
     Component {
         id: borderDelegate
         NBox {
@@ -74,15 +63,15 @@ NScrollView {
             Layout.preferredHeight: 85 * Style.uiScaleRatio
             radius: Style.radiusM
 
-            // 1. MAPEO DE PROPIEDADES (Ahora leemos rawTitle y rawDesc del JSON)
+            // Property mapping (rawTitle/rawDesc from JSON as fallback)
             property string cTitleKey: model.title || ""
             property string cDescKey: model.desc || ""
             property string cRawTitle: model.rawTitle || ""
             property string cRawDesc: model.rawDesc || ""
 
             property string cFile: model.file || ""
-            property string cIcon: model.icon || "help" // Evita exclamaciones si falta icono
-            property color cColor: model.color || "#888888" // Evita exclamaciones si falta color
+            property string cIcon: model.icon || "help"
+            property color cColor: model.color || "#888888"
             property string cTag: model.tag || "USER"
 
             property bool isActive: borderSettings.activeBorderFile === cFile
@@ -97,18 +86,18 @@ NScrollView {
             MouseArea {
                 id: hoverArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    // 1. CAPTURAR EL ESTADO ACTUAL (Antes de que cambie)
+                    // 1. Capture current state (before it changes)
                     var wasActive = isActive
 
-                    // 2. CALCULAR LA INTENCIÓN
+                    // 2. Determine intent
                     var scriptArg = wasActive ? "none" : cardRoot.cFile
                     var settingArg = wasActive ? "" : cardRoot.cFile
 
-                    // 3. EJECUTAR EL SCRIPT PRIMERO
+                    // 3. Run script first
                     if (borderRoot.runScript) borderRoot.runScript("border.sh", scriptArg)
 
-                        // 4. ACTUALIZAR LA UI AL FINAL
-                        borderSettings.activeBorderFile = settingArg
+                    // 4. Update UI last
+                    borderSettings.activeBorderFile = settingArg
                 }
             }
 
@@ -120,13 +109,11 @@ NScrollView {
                     pointSize: Style.fontSizeL
                 }
                 ColumnLayout {
-                    Layout.fillWidth: true; spacing: 2
+                    Layout.fillWidth: true; spacing: Style.marginXXS
                     RowLayout {
-                        spacing: 8
-                        // 2. USO DE LA TRADUCCIÓN HÍBRIDA
+                        spacing: Style.marginM
                         NText {
-                            // "Intenta traducir la Key, si no puedes, dame el RawTitle"
-                            text: borderRoot.tr(cardRoot.cTitleKey, cardRoot.cRawTitle)
+                            text: (cardRoot.cTitleKey ? borderRoot.pluginApi?.tr(cardRoot.cTitleKey) : null) || cardRoot.cRawTitle
                             font.weight: Font.Bold
                             color: cardRoot.isActive ? Color.mOnSurface : Color.mOnSurfaceVariant
                         }
@@ -136,15 +123,14 @@ NScrollView {
                         }
                     }
                     NText {
-                        // "Intenta traducir la Key, si no puedes, dame el RawDesc"
-                        text: borderRoot.tr(cardRoot.cDescKey, cardRoot.cRawDesc)
+                        text: (cardRoot.cDescKey ? borderRoot.pluginApi?.tr(cardRoot.cDescKey) : null) || cardRoot.cRawDesc
                         pointSize: Style.fontSizeS
                         color: Color.mOnSurfaceVariant
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
                 }
-                // Switch visual (opcional, para coherencia)
+                // Visual toggle switch
                 Item {
                     width: 40 * Style.uiScaleRatio; height: 20 * Style.uiScaleRatio
                     Rectangle {
@@ -172,22 +158,22 @@ NScrollView {
         spacing: Style.marginS
         Layout.margins: Style.marginM
 
-        // CABECERA (También usa la función tr segura)
+        // HEADER
         ColumnLayout {
-            Layout.fillWidth: true; spacing: 4; Layout.margins: Style.marginL
+            Layout.fillWidth: true; spacing: Style.marginXS; Layout.margins: Style.marginL
             NText {
-                text: borderRoot.tr("borders.header_title", "Estilos de Borde")
+                text: borderRoot.pluginApi?.tr("borders.header_title") || "Visual Styles"
                 font.weight: Font.Bold; pointSize: Style.fontSizeL; color: Color.mPrimary
             }
             NText {
-                text: borderRoot.tr("borders.header_subtitle", "Personaliza los colores y degradados de las ventanas")
+                text: borderRoot.pluginApi?.tr("borders.header_subtitle") || "Define your windows' personality"
                 pointSize: Style.fontSizeS; color: Color.mOnSurfaceVariant
             }
         }
 
         NDivider { Layout.fillWidth: true; opacity: 0.5 }
 
-        // SLIDER DE GEOMETRÍA
+        // BORDER THICKNESS SLIDER
         NBox {
             Layout.fillWidth: true
             implicitHeight: geoCol.implicitHeight + (Style.marginL * 2)
@@ -202,11 +188,11 @@ NScrollView {
                     spacing: Style.marginS
                     NIcon { icon: "maximize"; color: Color.mPrimary; pointSize: Style.fontSizeM }
                     NText {
-                        text: borderRoot.tr("borders.geometry.title", "Grosor del Borde")
+                        text: borderRoot.pluginApi?.tr("borders.geometry.title") || "Border Thickness"
                         font.weight: Font.Bold; color: Color.mOnSurface
                     }
                     Item { Layout.fillWidth: true }
-                    NText { text: thicknessSlider.value + "px"; color: Color.mPrimary; font.family: Style.fontMono; font.weight: Font.Bold }
+                    NText { text: thicknessSlider.value + "px"; color: Color.mPrimary; font.weight: Font.Bold }
                 }
                 NSlider {
                     id: thicknessSlider
